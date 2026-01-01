@@ -66,7 +66,7 @@ if user is None:
             target_projects
         ))
         conn.commit()
-        st.experimental_rerun()
+        st.rerun()
 
     st.stop()
 
@@ -111,7 +111,7 @@ if st.button("Commit"):
     INSERT OR REPLACE INTO progress VALUES (?, ?, ?, ?)
     """, (today, cyber_today, dl_today, projects_today))
     conn.commit()
-    st.experimental_rerun()
+    st.rerun()
 
 # -----------------------------
 # LOAD DATA
