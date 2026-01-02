@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from datetime import date, timedelta
+from datetime import date
 import plotly.express as px
 
 # -----------------------------
@@ -54,6 +54,68 @@ CREATE TABLE IF NOT EXISTS failure_journal (
 conn.commit()
 
 # -----------------------------
+# SIDEBAR ROADMAP
+# -----------------------------
+with st.sidebar:
+    if st.button("Show 30-Day Red Team AI Roadmap"):
+        st.markdown("""
+## 30-Day Red Team AI Roadmap
+
+### Day 1
+- Write ML assumptions
+- Write LLM assumptions
+- Write evaluation failures
+
+### Days 2 to 6
+Core adversarial ML
+- Break NLP model using TextAttack
+- Insert backdoor trigger
+- Robustness evaluation
+Resources:
+- TextAttack
+- TrojAI
+- Robustness Gym
+
+### Days 7 to 11
+Data poisoning and leakage
+- Poison 1 to 3 percent of data
+- Introduce train test leakage
+- Shortcut learning demo
+Resources:
+- TrojAI
+- Adversarial ML book
+
+### Days 12 to 17
+LLM red teaming
+- Prompt injection
+- Indirect injection
+- Safety boundary mapping
+Resources:
+- Lakera Labs
+- Garak
+- OWASP LLM Top 10
+
+### Days 18 to 22
+Multimodal attacks
+- CLIP backdoor
+- Cross modal confusion
+Resources:
+- BadCLIP
+
+### Days 23 to 26
+Threat modeling
+- Define attacker
+- Break defenses
+
+### Days 27 to 29
+Original contribution
+- New metric or attack
+
+### Day 30
+Final red team report
+""")
+
+# -----------------------------
 # USER SETUP
 # -----------------------------
 user = c.execute("SELECT * FROM user WHERE id=1").fetchone()
@@ -62,9 +124,9 @@ if user is None:
     st.title("Initialize Red Team AI Profile")
 
     name = st.text_input("Name")
-    redteam_total = st.number_input("Total Red Team AI Units (30 Days)", min_value=1)
-    dl_total = st.number_input("Total Deep Learning Theory Pages", min_value=1)
-    target_projects = st.number_input("Target Total Projects", min_value=1)
+    redteam_total = st.number_input("Total Red Team AI Units", min_value=1)
+    dl_total = st.number_input("Total DL Theory Pages", min_value=1)
+    target_projects = st.number_input("Target Projects", min_value=1)
 
     if st.button("Lock In"):
         c.execute("""
@@ -118,7 +180,7 @@ with col3:
     )
 
 notes_today = st.text_area(
-    "Execution Notes / Attacks / Insights",
+    "Execution Notes",
     value=existing[4] if existing else ""
 )
 
@@ -137,16 +199,24 @@ st.subheader("Failure Journal")
 fj_col1, fj_col2, fj_col3 = st.columns(3)
 
 with fj_col1:
-    fj_system = st.text_input("System / Model Name")
+    fj_system = st.text_input("System or Model")
 
 with fj_col2:
     fj_type = st.selectbox(
         "Failure Type",
-        ["Prompt Injection", "Backdoor", "Data Leakage", "Shortcut Learning", "Robustness Failure", "Evaluation Bug", "Other"]
+        [
+            "Prompt Injection",
+            "Backdoor",
+            "Data Leakage",
+            "Shortcut Learning",
+            "Robustness Failure",
+            "Evaluation Bug",
+            "Other"
+        ]
     )
 
 with fj_col3:
-    fj_desc = st.text_input("Short Failure Description")
+    fj_desc = st.text_input("Failure Description")
 
 if st.button("Log Failure"):
     c.execute("""
@@ -179,9 +249,6 @@ redteam_burn = redteam_total - redteam_done
 dl_burn = dl_total - dl_done
 project_burn = target_projects - projects_done
 
-# -----------------------------
-# SCORE
-# -----------------------------
 execution_score = (
     (redteam_done / redteam_total) +
     (dl_done / dl_total) +
@@ -200,23 +267,20 @@ m2.metric("DL Theory Pages", f"{dl_done}/{dl_total}")
 m3.metric("Projects", f"{projects_done}/{target_projects}")
 m4.metric("Execution Score", f"{execution_score:.1f}%")
 
-# -----------------------------
-# RED ZONE
-# -----------------------------
 if execution_score < 33:
-    st.error("RED ZONE: EXECUTION FAILURE")
+    st.error("RED ZONE")
 elif execution_score < 66:
-    st.warning("YELLOW ZONE: UNDERPERFORMANCE")
+    st.warning("YELLOW ZONE")
 else:
-    st.success("GREEN ZONE: ON TRACK")
+    st.success("GREEN ZONE")
 
 # -----------------------------
 # STREAK
 # -----------------------------
 df["active"] = (df[["redteam_units", "dl_pages", "projects"]].sum(axis=1) > 0)
 streak = 0
-for active in reversed(df["active"].tolist()):
-    if active:
+for a in reversed(df["active"].tolist()):
+    if a:
         streak += 1
     else:
         break
@@ -228,46 +292,35 @@ st.metric("Current Streak (Days)", streak)
 # -----------------------------
 st.subheader("Velocity Over Time")
 
-fig1 = px.line(df, x="day", y=["redteam_units", "dl_pages"], title="Execution Velocity")
+fig1 = px.line(df, x="day", y=["redteam_units", "dl_pages"])
 st.plotly_chart(fig1, use_container_width=True)
 
-fig2 = px.bar(df, x="day", y="projects", title="Projects Completed")
+fig2 = px.bar(df, x="day", y="projects")
 st.plotly_chart(fig2, use_container_width=True)
 
 # -----------------------------
-# BURN RATE PROJECTION
-# -----------------------------
-st.subheader("Burn Rate Projection")
-
-proj_redteam_days = redteam_burn / redteam_velocity if redteam_velocity > 0 else float("inf")
-proj_dl_days = dl_burn / dl_velocity if dl_velocity > 0 else float("inf")
-proj_project_days = project_burn / project_velocity if project_velocity > 0 else float("inf")
-
-p1, p2, p3 = st.columns(3)
-
-p1.metric("Red Team Days Remaining", f"{proj_redteam_days:.1f}")
-p2.metric("DL Days Remaining", f"{proj_dl_days:.1f}")
-p3.metric("Project Days Remaining", f"{proj_project_days:.1f}")
-
-# -----------------------------
-# FAILURE ANALYTICS PLUGIN
+# FAILURE ANALYTICS
 # -----------------------------
 st.subheader("Failure Analytics")
 
 fj_df = pd.read_sql("SELECT * FROM failure_journal ORDER BY id DESC", conn)
 
 if not fj_df.empty:
-    fig3 = px.histogram(fj_df, x="failure_type", title="Failure Type Distribution")
+    fig3 = px.histogram(fj_df, x="failure_type")
     st.plotly_chart(fig3, use_container_width=True)
 else:
     st.info("No failures logged yet")
 
 # -----------------------------
-# FINAL JUDGMENT
+# FINAL VERDICT
 # -----------------------------
+proj_redteam_days = redteam_burn / redteam_velocity if redteam_velocity > 0 else float("inf")
+proj_dl_days = dl_burn / dl_velocity if dl_velocity > 0 else float("inf")
+proj_project_days = project_burn / project_velocity if project_velocity > 0 else float("inf")
+
 st.subheader("System Verdict")
 
 if max(proj_redteam_days, proj_dl_days, proj_project_days) > 30:
-    st.error("SYSTEM VERDICT: YOU WILL MISS THE DEADLINE AT CURRENT VELOCITY")
+    st.error("SYSTEM VERDICT: DEADLINE WILL BE MISSED")
 else:
-    st.success("SYSTEM VERDICT: DEADLINE ACHIEVABLE AT CURRENT VELOCITY")
+    st.success("SYSTEM VERDICT: DEADLINE ACHIEVABLE")
